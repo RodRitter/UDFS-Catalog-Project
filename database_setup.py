@@ -24,5 +24,5 @@ class Item(Base):
     category = relationship(Category)
 
 
-engine = create_engine('sqlite:///itemcatalogue.db')
+engine = create_engine('sqlite:///itemcatalog.db')
 Base.metadata.create_all(engine)
