@@ -21,7 +21,13 @@ for cat_name in dummy_data:
     cat = Category(name = cat_name)
     session.add(cat)
     for item_name in dummy_data[cat_name]:
-        item = Item(name = item_name, description = "This is a {}".format(item_name), category = cat)
-        session.add(item)
+        query = session.query(Item).filter_by(name = item_name).first()
+        if query == None:
+            item = Item(name = item_name, description = "This is a {}".format(item_name), category = cat)
+            session.add(item)
+            print("Added Item: {}".format(item_name))
+        else:
+            print("{} already exists. Skipping.".format(item_name))
+        
 
 session.commit()
