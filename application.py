@@ -23,7 +23,7 @@ CLIENT_ID = json.loads(open("client_secrets.json", "r").read())["web"]["client_i
 
 @app.route("/")
 @app.route("/login")
-def loginPage():
+def login():
     if 'username' in login_session:
         return redirect('/recent')
     state = "".join(random.choice(string.ascii_uppercase + string.digits) for x in range(32))
@@ -32,11 +32,8 @@ def loginPage():
 
 
 @app.route("/recent")
-def recentPage():
-    if 'username' not in login_session:
-        return redirect('/login')
-
-    return render_template("recent.html", session=login_session)
+def recent():
+    return render_template("recent.html")
 
 
 @app.route("/gconnect", methods=["POST"])
@@ -124,18 +121,12 @@ def gdisconnect():
 
     url = "https://accounts.google.com/o/oauth2/revoke?token={}".format(access_token)
     h = httplib2.Http()
-    result = h.request(url, "GET")[0]
-
-    if result["status"] == "200":
-        del login_session["gplus_id"]
-        del login_session["username"]
-        del login_session["picture"]
-        return redirect('/login')
-    else:
-        print("Failed to revoke token from given user")
-        response = make_response(json.dumps('Failed to revoke token for given user.'), 400)
-        response.headers['Content-Type'] = 'application/json'
-        return response
+    h.request(url, "GET")
+    
+    del login_session["gplus_id"]
+    del login_session["username"]
+    del login_session["picture"]
+    return redirect('/recent')
 
 
 if __name__ == "__main__":
