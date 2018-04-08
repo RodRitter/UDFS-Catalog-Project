@@ -1,6 +1,33 @@
 {% extends "layout.html" %}
 {% block content %}
-  
-<h2>Recent</h2>
+
+<div class="jumbotron">
+        <h1 class="display-4">Welcome to Classroom Database</h1>
+        <p class="lead">Keep track of students easily.</p>
+      </div>
+
+<div class="row p-5">
+    
+    <div class="col-md-6">
+        <h4>Classrooms</h4>
+
+        <ul class="list-group">
+            {% for classroom in classrooms %}
+                <a href="/classrooms/{{ classroom[0] }}" class="list-group-item list-group-item-action">{{ classroom[1] }}</a>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <div class="col-md-6">
+        <h4>Recent</h4>
+        {% for student in students %}
+            <p><small class="mr-3">{{ student[0] }}</small> <strong>{{ student[2] }}</strong> was added to <a href="classroom/{{ student[3] }}">{{ student[4] }}'s</a> classroom</p>
+        {% endfor %}
+
+    </div>
+
+    
+
+</div>
 
 {% endblock %}
