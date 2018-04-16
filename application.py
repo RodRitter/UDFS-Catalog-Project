@@ -11,94 +11,238 @@ from flask import jsonify, url_for, flash, make_response
 from flask import session as login_session
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from database_setup import Base, Classroom, Student
+from database_setup import Base, Classroom, Student, User
 from oauth2client.client import flow_from_clientsecrets
 from oauth2client.client import FlowExchangeError
-
-from flask import jsonify
+from sqlalchemy import create_engine
 
 app = Flask(__name__)
 
 client_secrets = json.loads(open("client_secrets.json", "r").read())
 CLIENT_ID = client_secrets["web"]["client_id"]
 
+engine = create_engine('sqlite:///classroomdb.db')
+Base.metadata.bind = engine
+DBSession = sessionmaker(bind=engine)
+session = DBSession()
+
 
 # Helpers
-def query_db(query):
-    conn = sqlite3.connect("classroomdb.db")
-    cursor = conn.cursor()
-    cursor.execute(query)
-    results = cursor.fetchall()
-    conn.close()
-    return results
+def query_result_to_json(result):
+    json = []
+    if type(result) is not list:
+        return result.serialize
+    for r in result:
+        json.append(r.serialize)
+    return json
 
 
-# Converts tuple database results into a regular array
-# that we can read with javascript
-def convert_to_array(results):
-    parsed = []
-    for t in results:
-        tuple_parsed = []
-        for r in t:
-            tuple_parsed.append(r)
-        parsed.append(tuple_parsed)
-    return parsed
+# API Endpoints
+@app.route("/api/classroom", methods=['GET', 'POST'])
+def endpoint_classrooms():
+    if request.method == 'GET':
+        classroom = session.query(Classroom).all()
+        classrooms = query_result_to_json(classroom)
+        return jsonify(classrooms)
+    if request.method == 'POST':
+        if login_session.get('user_id'):
+            name = request.args.get('name')
+            if name:
+                new_classroom = Classroom(
+                    name=name,
+                    user_id=login_session.get('user_id'))
+                session.add(new_classroom)
+                session.commit()
+                json_classroom = query_result_to_json(new_classroom)
+                return jsonify(json_classroom)
+        return jsonify([])
+    else:
+        return "Restricted Method"
 
 
-# Routing
-@app.route("/", methods=['GET', 'POST'])
+@app.route("/api/classroom/<int:id>", methods=['GET', 'POST', 'DELETE'])
+def endpoint_classroom(id):
+    if request.method == 'GET':
+        classroom = session.query(Classroom).filter(Classroom.id == id).first()
+        if classroom:
+            classroom_json = query_result_to_json(classroom)
+            return jsonify(classroom_json)
+        else:
+            return jsonify([])
+
+    elif request.method == 'POST':
+        if login_session.get('user_id'):
+            name = request.args.get('name')
+            desc = request.args.get('description')
+            if name and desc:
+                new_student = Student(
+                    name=name,
+                    description=desc,
+                    user_id=login_session.get('user_id'),
+                    classroom_id=id)
+                session.add(new_student)
+                session.commit()
+                json_student = query_result_to_json(new_student)
+                return jsonify(json_student)
+        return jsonify([])
+    elif request.method == 'DELETE':
+        if login_session.get('user_id'):
+            classroom = session.query(Classroom)
+            classroom = classroom.filter(Classroom.id == id).first()
+            session.delete(classroom)
+            session.commit()
+    else:
+        return "Restricted Method"
+
+
+@app.route("/api/student", methods=['GET'])
+def endpoint_students():
+    if request.method == 'GET':
+        students_query = session.query(Student).all()
+
+        if(students_query):
+            students = query_result_to_json(students_query)
+            return jsonify(students)
+        else:
+            return jsonify([])
+    else:
+        return "Restricted Method"
+
+
+@app.route("/api/student/<int:id>", methods=['GET', 'DELETE'])
+def endpoint_student(id):
+    if request.method == 'GET':
+        students_query = session.query(Student)
+        students_query = students_query.filter(Student.id == id).first()
+        if(students_query):
+            students = query_result_to_json(students_query)
+            return jsonify(students)
+        else:
+            return jsonify([])
+    if request.method == 'DELETE':
+        if login_session.get('user_id'):
+            classroom = session.query(Classroom)
+            classroom = classroom.filter(Classroom.id == id).first()
+            session.delete(classroom)
+            session.commit()
+            classroom_json = query_result_to_json(classroom)
+            return jsonify(classroom_json)
+        return jsonify([])
+    else:
+        return "Restricted Method"
+
+
+# New Classroom Route
+@app.route("/")
 @app.route("/classrooms", methods=['GET', 'POST'])
 def recent():
-    # Regular Page View
-    if request.method == "GET":
-        all_classrooms = query_db("SELECT id, name FROM classroom")
-        last_students = query_db(
-            "SELECT strftime('%d-%m-%Y %H:%M:%S', datetime(student.created_date)), \
-            student.id, student.name, classroom.id, classroom.name \
-            FROM student JOIN classroom \
-            ON student.classroom_id=classroom.id \
-            ORDER BY created_date DESC LIMIT 5")
+    if request.method == 'GET':
+        classrooms_result = session.query(Classroom).all()
 
-        classrooms = convert_to_array(all_classrooms)
-        students = convert_to_array(last_students)
+        classrooms = query_result_to_json(classrooms_result)
+        students_result = session.query(Student)
+        students_result = students_result.order_by(Student.created_date.desc())
+        students_result = students_result.limit(5).all()
+        students_results_json = {}
+        students_results_json = query_result_to_json(students_result)
+
+        for s in students_results_json:
+            classroom_result = session.query(Classroom)
+            cid = s['classroom_id']
+            classroom_result = classroom_result.filter(Classroom.id == cid)
+            classroom_result = classroom_result.first()
+            s['classroom_name'] = classroom_result.name
+
         return render_template(
             "recent.html",
             STATE=create_state(),
             classrooms=classrooms,
-            students=students)
-    elif request.method == 'POST':
-        return '/POST'
-    else:
-        # Not A Valid Request
-        return "NOT VALID REQUEST"
+            students=students_results_json)
+    if request.method == 'POST':
+        if login_session.get('user_id'):
+            name = request.form.get('name')
+            if name:
+                new_classroom = Classroom(
+                    name=name,
+                    user_id=login_session.get('user_id'))
+                session.add(new_classroom)
+                session.commit()
+        return redirect('/')
 
 
-@app.route("/classrooms/<int:id>", methods=["GET", "POST"])
+# New Student Route
+@app.route("/classrooms/<int:id>", methods=['GET', 'POST'])
 def classrooms(id):
-    # Regular Page View
-    if request.method == "GET":
-        classroom_query = query_db(
-            "SELECT name \
-            FROM classroom \
-            WHERE classroom.id={}".format(id))
+    if request.method == 'GET':
+        if login_session.get('user_id'):
+            classroom_result = session.query(Classroom)
+            classroom_result = classroom_result.filter(Classroom.id == id)
+            classroom_result = classroom_result.first()
 
-        classroom_name = convert_to_array(classroom_query)[0][0]
-        student_query = query_db(
-            "SELECT name, description, id \
-            FROM student \
-            WHERE classroom_id={}".format(id))
+            classroom = query_result_to_json(classroom_result)
 
-        students = convert_to_array(student_query)
-        return render_template(
-            "classroom.html",
-            STATE=create_state(),
-            classroom_name=classroom_name,
-            students=students)
+            students_result = session.query(Student)
+            student_cid = Student.classroom_id
+            students_result = students_result.filter(student_cid == id)
+            students_result = students_result.all()
+
+            students = ""
+            if students_result:
+                students = query_result_to_json(students_result)
+
+            return render_template(
+                "classroom.html",
+                STATE=create_state(),
+                classroom=classroom,
+                students=students)
+        else:
+            return redirect('/')
     elif request.method == 'POST':
-        return '/POST'
-    else:
-        # Not A Valid Request
-        return "NOT VALID REQUEST"
+        if login_session.get('user_id'):
+            name = request.form.get('name')
+            desc = request.form.get('description')
+            print(name)
+            print(desc)
+            if name:
+                new_student = Student(
+                    name=name,
+                    description=desc,
+                    user_id=login_session.get('user_id'),
+                    classroom_id=id)
+                session.add(new_student)
+                session.commit()
+        return redirect("/classrooms/{}".format(id))
+
+
+# Update Student Route
+@app.route("/students/<int:id>", methods=['POST'])
+def student_update(id):
+    if request.method == 'POST':
+        student = session.query(Student).filter(Student.id == id).first()
+
+        if login_session.get('user_id') and student:
+            name = request.form.get('name')
+            desc = request.form.get('description')
+
+            if name:
+                student.name = name
+            if desc:
+                student.description = desc
+
+            session.add(student)
+            session.commit()
+        return redirect('/classrooms/{}'.format(student.classroom_id))
+
+
+# Delete Student Route
+@app.route("/students/<int:id>/delete", methods=['POST'])
+def student_delete(id):
+    if request.method == 'POST':
+        student = session.query(Student).filter(Student.id == id).first()
+        if login_session.get('user_id') and student:
+            session.delete(student)
+            session.commit()
+        return redirect('/classrooms/{}'.format(student.classroom_id))
 
 
 # Google OAuth
@@ -171,8 +315,26 @@ def gconnect():
     data = json.loads(answer.text)
     login_session["username"] = data["name"]
     login_session["picture"] = data["picture"]
+    login_session["email"] = data["email"]
 
-    return redirect('/classrooms')
+    user_result = session.query(User)
+    user_result = user_result.filter(User.email == login_session["email"])
+    user_result = user_result.first()
+
+    if user_result:
+        user = query_result_to_json(user_result)
+        login_session["user_id"] = user['id']
+    else:
+        new_user = User(email=login_session["email"])
+        session.add(new_user)
+        session.commit()
+        user_result = session.query(User)
+        user_result = user_result.filter(User.email == login_session["email"])
+        user_result = user_result.first()
+        user = query_result_to_json(user_result)
+        login_session["user_id"] = user['id']
+
+    return redirect('/')
 
 
 @app.route("/gdisconnect")
@@ -192,6 +354,7 @@ def gdisconnect():
     del login_session["gplus_id"]
     del login_session["username"]
     del login_session["picture"]
+    del login_session["user_id"]
     return redirect('/')
 
 

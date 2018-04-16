@@ -22,7 +22,7 @@
                 {% if not session["username"] %}
                 <button id="top-login-btn" class="btn btn-outline-primary my-2 my-sm-0" data-toggle="modal" data-target="#loginModal">Login</button>
                 {% else %}
-                <span class="navbar-text mr-3">Welcome, {{session["username"]}}</span>
+                <span class="navbar-text mr-3">Welcome, {{session["username"]}} [{{ session["user_id"] }}]</span>
                 <a id="top-login-btn" href="{{ url_for('gdisconnect') }}" class="btn btn-outline-primary my-2 my-sm-0">Logout</a>
                 {% endif %}
             </div>
@@ -38,7 +38,7 @@
         <div class="modal-dialog" role="document">
             <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title text-center" id="exampleModalLongTitle">Login</h5>
+                <h5 class="modal-title text-center">Login</h5>
             </div>
             <div class="modal-body">
                 <button id="g-sign-in" class="btn-si btn-google">Sign in with Google</button>

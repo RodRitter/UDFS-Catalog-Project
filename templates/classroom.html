@@ -2,28 +2,101 @@
 {% block content %}
 
 <div class="pt-5">
-    <h1 class="pb-3">Classroom <span class="badge badge-secondary ml-2">{{ classroom_name }}</span></h1>
+    <h1 class="pb-3">Classroom <span class="badge badge-secondary ml-2">{{ classroom.name }}</span></h1>
 
     <a href="/" class="btn btn-outline-secondary m-2">Go Back</a>
-    <a href="" class="btn btn-outline-primary m-2">Add Student</a>
+    {% if session['username'] %}
+    <button class="btn btn-outline-primary m-2" data-toggle="modal" data-target="#newStudentModal">Add Student</button>
+    {% endif %}
 
     <div class="d-flex flex-wrap">
+        {% if students|length < 1 %}
+            <p class="container">No Students. Add a new student.</p>
+        {% endif %}
+
         {% for student in students %}
         <div class="card m-2" style="width:250px">
             <div class="card-body">
-                <h5 class="card-title">{{ student[0] }}</h5>
-                <h6 class="card-subtitle mb-2 text-muted">ID Number: {{ student[2] }} </h6>
-                <p class="card-text">{{ student[1] }}</p>
-                <!-- <a href="#" class="card-link">Edit</a>
-                <a href="#" class="card-link">Delete</a> -->
+                <h5 class="card-title">{{ student.name }}</h5>
+                <h6 class="card-subtitle mb-2 text-muted">ID Number: {{ student.id }} </h6>
+                <p class="card-text">{{ student.description }}</p>
+                {% if session['username'] %}
+                <button class="btn btn-sm btn-warning my-2 my-sm-0" data-toggle="modal" data-target="#updateStudentModal{{ student.id }}">Update</button>
+                <button class="btn btn-sm btn-danger my-2 my-sm-0" data-toggle="modal" data-target="#deleteConfirmModal{{ student.id }}">Delete</button>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Update Modal -->
+        <div class="modal fade" id="updateStudentModal{{ student.id }}" tabindex="-1" role="dialog" aria-labelledby="updateStudentModal{{ student.id }}" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-center" id="exampleModalLongTitle">Edit Student</h5>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <form action="/students/{{ student.id }}" method="POST">
+                            <div class="form-group">
+                                <label for="name">Name</label>
+                                <input class="form-control" type="text" name="name" value="{{ student.name }}">
+                            </div>
+                            <div class="form-group">
+                                <label for="description">Description</label>
+                                <input class="form-control" type="text" name="description" value="{{ student.description }}">
+                            </div>
+                            <button class="btn btn-primary" type="submit">Update</button>
+                        </form>
+                    </div>
+                </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delete Confirm Modal -->
+        <div class="modal fade" id="deleteConfirmModal{{ student.id }}" tabindex="-1" role="dialog" aria-labelledby="deleteConfirmModal{{ student.id }}" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-center" id="exampleModalLongTitle">Are you sure?</h5>
+                </div>
+                <div class="modal-body">
+                        <form action="/students/{{ student.id }}/delete" method="POST">
+                            <button type="submit" class="btn btn-primary btn-lg">Delete</button>
+                            <button type="button" class="btn btn-secondary btn-lg" data-dismiss="modal">Cancel</button>
+                        </form>
+                </div>
+                </div>
             </div>
         </div>
         {% endfor %}
-        
 
+        <!-- New Student Modal -->
+        <div class="modal fade" id="newStudentModal" tabindex="-1" role="dialog" aria-labelledby="newStudentModal" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-center" id="exampleModalLongTitle">New Student</h5>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <form action="/classrooms/{{ classroom.id }}" method="POST">
+                            <div class="form-group">
+                                <label for="name">Name</label>
+                                <input class="form-control" type="text" name="name">
+                            </div>
+                            <div class="form-group">
+                                <label for="description">Description</label>
+                                <input class="form-control" type="text" name="description">
+                            </div>
+                            <button class="btn btn-primary" type="submit">Add</button>
+                        </form>
+                    </div>
+                </div>
+                </div>
+            </div>
+        </div>
     </div>
-    
-
 </div>
 
 {% endblock %}
