@@ -1,3 +1,5 @@
+*This is project code for the Udacity [Full-Stack Web Developer Nanodegree](https://www.udacity.com/course/full-stack-web-developer-nanodegree--nd004)*
+
 # Requirements
 - Python 3.6
 - Flask 0.12.2
