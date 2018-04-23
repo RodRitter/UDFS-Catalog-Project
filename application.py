@@ -1,6 +1,5 @@
 # /usr/bin/env python3
 
-import sqlite3
 import random
 import string
 import httplib2
@@ -14,14 +13,13 @@ from sqlalchemy.orm import sessionmaker
 from database_setup import Base, Classroom, Student, User
 from oauth2client.client import flow_from_clientsecrets
 from oauth2client.client import FlowExchangeError
-from sqlalchemy import create_engine
 
 app = Flask(__name__)
 
 client_secrets = json.loads(open("client_secrets.json", "r").read())
 CLIENT_ID = client_secrets["web"]["client_id"]
 
-engine = create_engine('sqlite:///classroomdb.db')
+engine = create_engine('postgresql://catalog:password@localhost:5432/classrooms')
 Base.metadata.bind = engine
 DBSession = sessionmaker(bind=engine)
 session = DBSession()
@@ -359,6 +357,6 @@ def gdisconnect():
 
 
 if __name__ == "__main__":
-    app.secret_key = "super secret key"
-    app.debug = True
-    app.run(host="0.0.0.0", port=5000)
+    app.run()
+
+app.secret_key = "super secret key"

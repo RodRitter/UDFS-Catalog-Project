@@ -59,5 +59,5 @@ class Student(Base):
         }
 
 
-engine = create_engine('sqlite:///classroomdb.db')
-Base.metadata.create_all(engine)
+#engine = create_engine('postgresql://catalog:password@localhost:5432/classrooms')
+#Base.metadata.create_all(engine)
